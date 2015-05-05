@@ -1,6 +1,6 @@
 /*Smarbot Profile for tempowaker mage
 * Deck from : http://www.hearthpwn.com/decks/240196-fast-legend-mage
-* Contributors : Wirmate
+* Contributors : Wirmate, Botfanatic
 */
 using System.Linq;
 
@@ -207,6 +207,10 @@ namespace SmartBot.Plugins.API
 				case Card.Cards.GAME_005://The Coin
 					SpellsCastGlobalCost += 4;
 					break;
+				case Card.Cards.CS2_031://Ice Lance
+                    if (!target.IsFrozen)
+                        SpellsCastGlobalCost += 25;                    
+					break; 
 			}
 		}
 
