@@ -3,6 +3,7 @@
 * Contributors : Wirmate, Botfanatic
 */
 using System.Linq;
+using System.Collections.Generic;
 
 namespace SmartBot.Plugins.API
 {
@@ -11,8 +12,8 @@ namespace SmartBot.Plugins.API
 		private int FriendCardDrawValue = 5;
 		private int EnemyCardDrawValue = 2;
 
-		private int MinionEnemyTauntValue = 6;
-		
+		private int MinionEnemyTauntValue = 10;
+
 		private int MinionDivineShield = 4;
 
 		private int HeroEnemyHealthValue = 4;
@@ -20,7 +21,7 @@ namespace SmartBot.Plugins.API
 
 		private int MinionEnemyAttackValue = 2;
 		private int MinionEnemyHealthValue = 2;
-		private int MinionFriendAttackValue = 4;
+		private int MinionFriendAttackValue = 2;
 		private int MinionFriendHealthValue = 2;
 
 		//Spells cast cost
@@ -60,15 +61,15 @@ namespace SmartBot.Plugins.API
 			//enemy board
 			foreach(Card c in board.MinionEnemy)
 			{
-				value -= GetCardValue(board,c);
+				value -= GetCardValue(board, c);
 			}
-			
+
 			//friend board
 			foreach(Card c in board.MinionFriend)
 			{
-				value += GetCardValue(board,c);
+				value += GetCardValue(board, c);
 			}
-			
+
 			//casting costs
 			value -= MinionCastGlobalCost;
 			value -= SpellsCastGlobalCost;
@@ -88,7 +89,7 @@ namespace SmartBot.Plugins.API
 			if (board.HeroEnemy.CurrentHealth <= 0)
 				value += 10000;
 
-			if (board.HeroFriend.CurrentHealth <= 0 && board.FriendCardDraw == 0) 
+			if (board.HeroFriend.CurrentHealth <= 0 && board.FriendCardDraw == 0)
 				value -= 100000;
 
 			value += GlobalValueModifier;
@@ -98,18 +99,21 @@ namespace SmartBot.Plugins.API
 
 			return value;
 		}
-		
-		public float GetCardValue(Board board,Card card)
+
+		public float GetCardValue(Board board, Card card)
 		{
 			float value = 0;
-			
+
 			//divine shield value
 			if(card.IsDivineShield)
-				value +=  MinionDivineShield;
-					
+				value += MinionDivineShield;
+
 			if(card.IsFriend)
 			{
 				value += card.CurrentHealth * MinionFriendHealthValue + card.CurrentAtk * MinionFriendAttackValue;
+
+				if(card.IsFrozen)
+					value -= 2;
 			}
 			else
 			{
@@ -119,7 +123,7 @@ namespace SmartBot.Plugins.API
 					value += MinionEnemyTauntValue;
 				value += card.CurrentHealth * MinionEnemyHealthValue + card.CurrentAtk * MinionEnemyAttackValue;
 			}
-			
+
 			return value;
 		}
 
@@ -129,32 +133,32 @@ namespace SmartBot.Plugins.API
 			{
 				case Card.Cards.FP1_004://Mad Scientist
 					if (board.TurnCount <= 2)
-						MinionCastGlobalValue += 10;
-					break;
+					MinionCastGlobalValue += 10;
+				break;
 				case Card.Cards.NEW1_012://Mana Wyrm
 					break;
 				case Card.Cards.EX1_608://Sorcerer's Apprentice
 					MinionCastGlobalCost += 10;
-					break;
+				break;
 				case Card.Cards.BRM_002://Flamewaker
-					if(board.TurnCount < 4)
-						MinionCastGlobalCost += 16;
-					else
-						MinionCastGlobalCost += 7;
-					break;
+					if(board.TurnCount < 4 && board.MinionFriend.Count < 2)
+					MinionCastGlobalCost += 16;
+				else
+					MinionCastGlobalCost += 5;
+				break;
 				case Card.Cards.EX1_096://Loot Hoarder
 					break;
 				case Card.Cards.EX1_284://Azure Drake
 					break;
 				case Card.Cards.EX1_559://Archmage Antonidas
 					if(board.SecretEnemy) MinionCastGlobalCost += 150;
-					MinionCastGlobalCost += 30;
-					break;
+				MinionCastGlobalCost += 30;
+				break;
 				case Card.Cards.GVG_082://Clockwork Gnome
 					break;
 				case Card.Cards.NEW1_019://Knife Juggler
-					MinionCastGlobalCost += 8; 
-					break;
+					MinionCastGlobalCost += 8;
+				break;
 				case Card.Cards.FP1_030://Loatheb
 					break;
 				case Card.Cards.GVG_110://Dr. Boom
@@ -166,51 +170,59 @@ namespace SmartBot.Plugins.API
 		{
 			if(board.MinionFriend.Any(x => x.Template.Id == Card.Cards.EX1_559))
 				SpellsCastGlobalValue += 50;
+
+			if(board.MinionFriend.Any(x => x.Template.Id == Card.Cards.BRM_002))
+				SpellsCastGlobalValue += 5;
 			
+			if(BoardHelper.IsSparePart(spell) && !board.MinionFriend.Any(x => x.Template.Id == Card.Cards.EX1_559))
+				SpellsCastGlobalCost += 10;
+
 			switch (spell.Template.Id)
 			{
 				case Card.Cards.EX1_277://Arcane Missiles
 					SpellsCastGlobalCost += 16;
-					break;
+				break;
 				case Card.Cards.CS2_027://Mirror Image
 					SpellsCastGlobalCost += 10;
-					break;
+				break;
 				case Card.Cards.GVG_001://Flamecannon
-					SpellsCastGlobalCost += 14;
-					break;
+					SpellsCastGlobalCost += 12;
+				break;
 				case Card.Cards.CS2_024://Frostbolt
 					SpellsCastGlobalCost += 17;
-					break;
+				break;
 				case Card.Cards.GVG_003://Unstable Portal
 					SpellsCastGlobalValue += 5;
-					break;
+				break;
 				case Card.Cards.CS2_023://Arcane Intellect
 					SpellsCastGlobalCost += 6;
-					break;
+				break;
 				case Card.Cards.EX1_287://Counterspell
 					SpellsCastGlobalValue += 5;
-					break;
+				break;
 				case Card.Cards.EX1_294://Mirror Entity
 					SpellsCastGlobalValue += 5;
-					break;
+				break;
 				case Card.Cards.GVG_005://Echo of Medivh
 					SpellsCastGlobalCost += 12;
-					SpellsCastGlobalValue += board.MinionFriend.Count * 5;
-					if(board.MinionFriend.Any(x => x.Template.Id == Card.Cards.BRM_002))SpellsCastGlobalValue += 5;
-					break;
+				SpellsCastGlobalValue += board.MinionFriend.Count * 5;
+				if(board.MinionFriend.Any(x => x.Template.Id == Card.Cards.BRM_002))SpellsCastGlobalValue += 5;
+				break;
 				case Card.Cards.CS2_029://Fireball
 					SpellsCastGlobalCost += 25;
-					break;
+				break;
 				case Card.Cards.CS2_022://Polymorph
 					SpellsCastGlobalCost += 14;
-					break;
+				break;
 				case Card.Cards.GAME_005://The Coin
-					SpellsCastGlobalCost += 4;
-					break;
+					SpellsCastGlobalCost += GetCoinValue(board);
+				break;
 				case Card.Cards.CS2_031://Ice Lance
                     if (!target.IsFrozen)
-                        SpellsCastGlobalCost += 25;                    
-					break; 
+					SpellsCastGlobalCost += 25;
+				else
+					SpellsCastGlobalCost += 15;
+				break;
 			}
 		}
 
@@ -218,7 +230,6 @@ namespace SmartBot.Plugins.API
 		{
 			switch (weapon.Template.Id)
 			{
-
 			}
 		}
 
@@ -231,7 +242,6 @@ namespace SmartBot.Plugins.API
 			{
 				switch (board.WeaponFriend.Template.Id)
 				{
-
 				}
 			}
 
@@ -241,6 +251,7 @@ namespace SmartBot.Plugins.API
 					OnMinionDeath(board, attacker);
 			}
 		}
+
 		public override void OnCastAbility(Board board, Card ability, Card target)
 		{
 			if(board.TurnCount < 2) HeroPowerGlobalCost += 10;
@@ -272,154 +283,221 @@ namespace SmartBot.Plugins.API
 			return ret;
 		}
 
-		public int GetCoinValue(Board board)
-		{
-			int currentMana = board.MaxMana;
-			bool HasDropCurrentTurn = (board.GetPlayables(currentMana, currentMana).Count != 0);
-			bool HasDropNextTurn = (board.GetPlayables(currentMana + 1, currentMana + 1).Count != 0);
-
-			if (HasDropCurrentTurn)
-			{
-				if (board.MaxMana == 1 && board.GetPlayables(1, 1).Count == 2)
-					return 0;
-				return 8;
-			}
-
-			if (!HasDropCurrentTurn && HasDropNextTurn)
-			{
-				bool CanPlayOnCurve = ((board.GetPlayables(currentMana + 1, currentMana + 1).Count > 1) && (board.GetPlayables(currentMana + 2, currentMana + 2).Count >= 1));
-
-				if (CanPlayOnCurve)
-				{
-					return 0;
-				}
-				return 8;
-			}
-
-			return 5;
-		}
-
 		public void OnMinionDeath(Board board, Card minion)
 		{
 			switch (minion.Template.Id)
 			{
-				
 			}
 		}
-		
+
 		public float GetThreatModifier(Card card)
 		{
 			switch (card.Template.Id)
 			{
 				case Card.Cards.GVG_006://Mechwarper
 					return 4;
-					
+
 				case Card.Cards.FP1_013://Kel'Thuzad
 					return 6;
-					
+
 				case Card.Cards.EX1_016://Sylvanas Windrunner
 					return 5;
-					
+
 				case Card.Cards.GVG_105://Piloted Sky Golem
 					return 3;
-					
+
 				case Card.Cards.BRM_031://Chromaggus
 					return 5;
-					
+
 				case Card.Cards.EX1_559://Archmage Antonidas
 					return 8;
-					
+
 				case Card.Cards.GVG_021://Mal'Ganis
 					return 6;
-					
+
 				case Card.Cards.EX1_608://Sorcerer's Apprentice
 					return 3;
-					
+
 				case Card.Cards.NEW1_012://Mana Wyrm
 					return 3;
-					
+
 				case Card.Cards.BRM_002://Flamewaker
 					return 4;
-					
+
 				case Card.Cards.EX1_595://Cult Master
 					return 2;
-					
+
 				case Card.Cards.NEW1_021://Doomsayer
 					return 0;
-					
+
 				case Card.Cards.EX1_243://Dust Devil
 					return 2;
-					
+
 				case Card.Cards.EX1_170://Emperor Cobra
 					return 4;
-					
+
 				case Card.Cards.BRM_028://Emperor Thaurissan
 					return 6;
-					
+
 				case Card.Cards.EX1_565://Flametongue Totem
 					return 5;
-					
+
 				case Card.Cards.GVG_100://Floating Watcher
 					return 4;
-					
+
 				case Card.Cards.GVG_113://Foe Reaper 4000
 					return 0;
-					
+
 				case Card.Cards.tt_004://Flesheating Ghoul
 					return 2;
-					
+
 				case Card.Cards.EX1_604://Frothing Berserker
 					return 3;
-					
+
 				case Card.Cards.BRM_019://Grim Patron
 					return 7;
-					
+
 				case Card.Cards.EX1_084://Warsong Commander
 					return 7;
-					
+
 				case Card.Cards.EX1_095://Gadgetzan Auctioneer
 					return 4;
-					
+
 				case Card.Cards.NEW1_040://Hogger
 					return 3;
-					
+
 				case Card.Cards.GVG_104://Hobgoblin
 					return 5;
-					
+
 				case Card.Cards.EX1_614://Illidan Stormrage
 					return 4;
-					
+
 				case Card.Cards.GVG_027://Iron Sensei
 					return 5;
-					
+
 				case Card.Cards.GVG_094://Jeeves
 					return 5;
-				
+
 				case Card.Cards.NEW1_019://Knife Juggler
 					return 4;
-					
+
 				case Card.Cards.EX1_001://Lightwarden
 					return 4;
-					
+
 				case Card.Cards.EX1_563://Malygos
 					return 6;
-					
+
 				case Card.Cards.GVG_103://Micro Machine
 					return 3;
-					
+
 				case Card.Cards.EX1_044://Questing Adventurer
 					return 3;
-					
+
 				case Card.Cards.EX1_298://Ragnaros the Firelord
 					return 6;
-					
+
 				case Card.Cards.GVG_037://Whirling Zap-o-matic
 					return 4;
-					
+
 				case Card.Cards.NEW1_020://Wild Pyromancer
 					return 5;
+
+				case Card.Cards.GVG_013://Cogmaster
+					return 5;
 			}
+
 			return 0;
+		}
+
+		public static int GetCoinValue(Board board)
+		{
+			int currentMana = board.MaxMana;
+			bool HasDropCurrentTurn = (BoardHelper.GetPlayables(currentMana, currentMana, board).Count != 0);
+			bool HasDropNextTurn = (BoardHelper.GetPlayables(currentMana + 1, currentMana + 1, board).Count != 0);
+
+			if (HasDropCurrentTurn)
+			{
+				if (board.MaxMana == 1 && BoardHelper.GetPlayables(1, 1, board).Count == 2)
+					return 0;
+				return 8;
+			}
+
+			if (!HasDropCurrentTurn && HasDropNextTurn)
+			{
+				bool CanPlayOnCurve = ((BoardHelper.GetPlayables(board.ManaAvailable , board.ManaAvailable, board).Count > 1));
+
+				if (CanPlayOnCurve)
+				{
+					return 0;
+				}
+
+				return 8;
+			}
+
+			return 5;
+		}
+	}
+
+	public static class BoardHelper
+	{
+		public static List<Card> GetPlayables(Card.CType card_type, int min_cost, int max_cost, Board board)
+		{
+			return board.Hand.FindAll(x => x.Type == card_type && x.CurrentCost >= min_cost && x.CurrentCost <= max_cost).ToList();
+		}
+
+		public static List<Card> GetPlayables(int min_cost, int max_cost, Board board)
+		{
+			return board.Hand.FindAll(x => x.CurrentCost >= min_cost && x.CurrentCost <= max_cost).ToList();
+		}
+
+		public static bool IsSilenceCard(Card c)
+		{
+			switch(c.Template.Id)
+			{
+				case Card.Cards.EX1_332://Silence
+					return true;
+				case Card.Cards.EX1_166://Keeper of the Grove
+					return true;
+				case Card.Cards.CS2_203://Ironbeak Owl
+					return true;
+				case Card.Cards.EX1_048://Spellbreaker
+					return true;
+				case Card.Cards.EX1_245://Earth Shock
+					return true;
+				case Card.Cards.EX1_626://Mass Dispel
+					return true;
+
+				default:
+					return false;
+			}
+
+			return false;
+		}
+
+		public static bool IsSparePart(Card c)
+		{
+			switch(c.Template.Id)
+			{
+				case Card.Cards.PART_001:
+					return true;
+				case Card.Cards.PART_002:
+					return true;
+				case Card.Cards.PART_003:
+					return true;
+				case Card.Cards.PART_004:
+					return true;
+				case Card.Cards.PART_005:
+					return true;
+				case Card.Cards.PART_006:
+					return true;
+				case Card.Cards.PART_007:
+					return true;
+
+				default:
+					return false;
+			}
+
+			return false;
 		}
 	}
 }
