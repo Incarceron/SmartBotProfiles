@@ -9,15 +9,15 @@ namespace SmartBot.Plugins.API
 {
 	public class bProfile : RemoteProfile
 	{
-		private int FriendCardDrawValue = 5;
-		private int EnemyCardDrawValue = 2;
-
 		private int MinionEnemyTauntValue = 10;
-
+		private int MinionEnemyWindfuryValue = 5;
 		private int MinionDivineShield = 4;
 
 		private int HeroEnemyHealthValue = 4;
 		private int HeroFriendHealthValue = 2;
+
+		private int FriendCardDrawValue = 5;
+		private int EnemyCardDrawValue = 2;
 
 		private int MinionEnemyAttackValue = 2;
 		private int MinionEnemyHealthValue = 2;
@@ -28,23 +28,18 @@ namespace SmartBot.Plugins.API
 		private int SpellsCastGlobalCost = 0;
 		//Spells cast value
 		private int SpellsCastGlobalValue = 0;
-
 		//Weapons cast cost
 		private int WeaponCastGlobalCost = 0;
 		//Weapons cast value
 		private int WeaponCastGlobalValue = 0;
-
 		//Minions cast cost
 		private int MinionCastGlobalCost = 0;
 		//Minions cast value
 		private int MinionCastGlobalValue = 0;
-
 		//HeroPowerCost
 		private int HeroPowerGlobalCost = 0;
-
 		//Weapons Attack cost
 		private int WeaponAttackGlobalCost = 0;
-
 		//GlobalValueModifier
 		private int GlobalValueModifier = 0;
 
@@ -121,6 +116,10 @@ namespace SmartBot.Plugins.API
 				//Taunt value
 				if(card.IsTaunt)
 					value += MinionEnemyTauntValue;
+
+				if(card.IsWindfury)
+					value += MinionEnemyWindfuryValue;
+
 				value += card.CurrentHealth * MinionEnemyHealthValue + card.CurrentAtk * MinionEnemyAttackValue;
 			}
 
@@ -135,93 +134,141 @@ namespace SmartBot.Plugins.API
 					if (board.TurnCount <= 2)
 					MinionCastGlobalValue += 10;
 				break;
+
 				case Card.Cards.NEW1_012://Mana Wyrm
 					break;
+
 				case Card.Cards.EX1_608://Sorcerer's Apprentice
-					MinionCastGlobalCost += 10;
+					MinionCastGlobalCost += 8;
 				break;
+
 				case Card.Cards.BRM_002://Flamewaker
-					if(board.TurnCount < 4 && board.MinionFriend.Count < 2)
+					if(board.TurnCount < 5 && board.MinionFriend.Count < 3)
 					MinionCastGlobalCost += 16;
 				else
-					MinionCastGlobalCost += 5;
+					MinionCastGlobalCost += 7;
 				break;
+
 				case Card.Cards.EX1_096://Loot Hoarder
-					break;
+					MinionCastGlobalValue += 2;
+				break;
+
+				case Card.Cards.CS2_203://Ironbeak Owl
+					MinionCastGlobalCost += 12;
+				break;
+
 				case Card.Cards.EX1_284://Azure Drake
 					break;
+
 				case Card.Cards.EX1_559://Archmage Antonidas
 					if(board.SecretEnemy) MinionCastGlobalCost += 150;
-				MinionCastGlobalCost += 30;
+				MinionCastGlobalCost += 40;
 				break;
+
 				case Card.Cards.GVG_082://Clockwork Gnome
 					break;
+
 				case Card.Cards.NEW1_019://Knife Juggler
 					MinionCastGlobalCost += 8;
 				break;
+
 				case Card.Cards.FP1_030://Loatheb
 					break;
+
 				case Card.Cards.GVG_110://Dr. Boom
 					break;
+
+				case Card.Cards.EX1_012://Bloodmage Thalnos
+					if(board.Hand.Count > 2)
+					MinionCastGlobalCost += 5;
+				break;
+
+				case Card.Cards.GVG_094://Jeeves
+					if(board.Hand.Count <= 1)	MinionCastGlobalValue += 50;
+				MinionCastGlobalCost += 15;
+				break;
 			}
 		}
 
 		public override void OnCastSpell(Board board, Card spell, Card target)
 		{
-			if(board.MinionFriend.Any(x => x.Template.Id == Card.Cards.EX1_559))
+			if(board.MinionFriend.Any(x => x.Template.Id == Card.Cards.EX1_559) && board.TurnCount > 8)
 				SpellsCastGlobalValue += 50;
 
 			if(board.MinionFriend.Any(x => x.Template.Id == Card.Cards.BRM_002))
 				SpellsCastGlobalValue += 5;
-			
+
+			if(board.Hand.Any(x => x.Template.Id == Card.Cards.BRM_002))
+				SpellsCastGlobalCost += 5;
+
 			if(BoardHelper.IsSparePart(spell) && !board.MinionFriend.Any(x => x.Template.Id == Card.Cards.EX1_559))
-				SpellsCastGlobalCost += 10;
+				SpellsCastGlobalCost += 14;
+
+			if(board.HeroEnemy.CurrentHealth <= 10 && target != null && target.Id != board.HeroEnemy.Id)
+				SpellsCastGlobalCost += 5;
 
 			switch (spell.Template.Id)
 			{
 				case Card.Cards.EX1_277://Arcane Missiles
 					SpellsCastGlobalCost += 16;
+				SpellsCastGlobalValue += board.MinionEnemy.FindAll(x => x.CurrentHealth <= 1).Count * 3;
 				break;
+
 				case Card.Cards.CS2_027://Mirror Image
+				if(!board.MinionFriend.Any(x => x.Template.Id == Card.Cards.EX1_559))
 					SpellsCastGlobalCost += 10;
 				break;
+
 				case Card.Cards.GVG_001://Flamecannon
-					SpellsCastGlobalCost += 12;
+					SpellsCastGlobalCost += 9;
 				break;
+
 				case Card.Cards.CS2_024://Frostbolt
-					SpellsCastGlobalCost += 17;
+					SpellsCastGlobalCost += 14;
 				break;
+
 				case Card.Cards.GVG_003://Unstable Portal
-					SpellsCastGlobalValue += 5;
+					SpellsCastGlobalValue += 6;
 				break;
+
 				case Card.Cards.CS2_023://Arcane Intellect
 					SpellsCastGlobalCost += 6;
 				break;
+
 				case Card.Cards.EX1_287://Counterspell
 					SpellsCastGlobalValue += 5;
 				break;
+
 				case Card.Cards.EX1_294://Mirror Entity
 					SpellsCastGlobalValue += 5;
 				break;
+
 				case Card.Cards.GVG_005://Echo of Medivh
 					SpellsCastGlobalCost += 12;
 				SpellsCastGlobalValue += board.MinionFriend.Count * 5;
 				if(board.MinionFriend.Any(x => x.Template.Id == Card.Cards.BRM_002))SpellsCastGlobalValue += 5;
 				break;
+
 				case Card.Cards.CS2_029://Fireball
-					SpellsCastGlobalCost += 25;
+					if(board.Hand.Count(x => x.Template.Id == Card.Cards.CS2_029) > 0 && target.Id == board.HeroEnemy.Id)
+					SpellsCastGlobalValue += 25;
+				SpellsCastGlobalCost += 25;
 				break;
+
 				case Card.Cards.CS2_022://Polymorph
 					SpellsCastGlobalCost += 14;
 				break;
+
 				case Card.Cards.GAME_005://The Coin
 					SpellsCastGlobalCost += GetCoinValue(board);
 				break;
+
 				case Card.Cards.CS2_031://Ice Lance
-                    if (!target.IsFrozen)
-					SpellsCastGlobalCost += 25;
-				else
-					SpellsCastGlobalCost += 15;
+					SpellsCastGlobalCost += 20;
+				break;
+				
+				case Card.Cards.CS2_025://Arcane Explosion
+					SpellsCastGlobalCost += 10;
 				break;
 			}
 		}
@@ -254,6 +301,7 @@ namespace SmartBot.Plugins.API
 
 		public override void OnCastAbility(Board board, Card ability, Card target)
 		{
+			if(board.HeroEnemy.CurrentHealth <= 6 && target != null && target.Id == board.HeroEnemy.Id) HeroPowerGlobalCost -= 10;
 			if(board.TurnCount < 2) HeroPowerGlobalCost += 10;
 			HeroPowerGlobalCost += 2;
 		}
@@ -261,6 +309,10 @@ namespace SmartBot.Plugins.API
 		public override RemoteProfile DeepClone()
 		{
 			bProfile ret = new bProfile();
+
+			ret._logBestMove.AddRange(_logBestMove);
+			ret._log = _log;
+
 			ret.HeroEnemyHealthValue = HeroEnemyHealthValue;
 			ret.HeroFriendHealthValue = HeroFriendHealthValue;
 			ret.MinionEnemyAttackValue = MinionEnemyAttackValue;
@@ -295,7 +347,7 @@ namespace SmartBot.Plugins.API
 			switch (card.Template.Id)
 			{
 				case Card.Cards.GVG_006://Mechwarper
-					return 4;
+					return 7;
 
 				case Card.Cards.FP1_013://Kel'Thuzad
 					return 6;
@@ -316,13 +368,13 @@ namespace SmartBot.Plugins.API
 					return 6;
 
 				case Card.Cards.EX1_608://Sorcerer's Apprentice
-					return 3;
+					return 5;
 
 				case Card.Cards.NEW1_012://Mana Wyrm
-					return 3;
+					return 5;
 
 				case Card.Cards.BRM_002://Flamewaker
-					return 4;
+					return 7;
 
 				case Card.Cards.EX1_595://Cult Master
 					return 2;
@@ -379,7 +431,7 @@ namespace SmartBot.Plugins.API
 					return 5;
 
 				case Card.Cards.NEW1_019://Knife Juggler
-					return 4;
+					return 7;
 
 				case Card.Cards.EX1_001://Lightwarden
 					return 4;
@@ -388,22 +440,22 @@ namespace SmartBot.Plugins.API
 					return 6;
 
 				case Card.Cards.GVG_103://Micro Machine
-					return 3;
+					return 5;
 
 				case Card.Cards.EX1_044://Questing Adventurer
-					return 3;
-
-				case Card.Cards.EX1_298://Ragnaros the Firelord
 					return 6;
 
+				case Card.Cards.EX1_298://Ragnaros the Firelord
+					return 7;
+
 				case Card.Cards.GVG_037://Whirling Zap-o-matic
-					return 4;
+					return 6;
 
 				case Card.Cards.NEW1_020://Wild Pyromancer
-					return 5;
+					return 6;
 
 				case Card.Cards.GVG_013://Cogmaster
-					return 5;
+					return 8;
 			}
 
 			return 0;
@@ -411,30 +463,7 @@ namespace SmartBot.Plugins.API
 
 		public static int GetCoinValue(Board board)
 		{
-			int currentMana = board.MaxMana;
-			bool HasDropCurrentTurn = (BoardHelper.GetPlayables(currentMana, currentMana, board).Count != 0);
-			bool HasDropNextTurn = (BoardHelper.GetPlayables(currentMana + 1, currentMana + 1, board).Count != 0);
-
-			if (HasDropCurrentTurn)
-			{
-				if (board.MaxMana == 1 && BoardHelper.GetPlayables(1, 1, board).Count == 2)
-					return 0;
-				return 8;
-			}
-
-			if (!HasDropCurrentTurn && HasDropNextTurn)
-			{
-				bool CanPlayOnCurve = ((BoardHelper.GetPlayables(board.ManaAvailable , board.ManaAvailable, board).Count > 1));
-
-				if (CanPlayOnCurve)
-				{
-					return 0;
-				}
-
-				return 8;
-			}
-
-			return 5;
+			return 4;
 		}
 	}
 
@@ -456,14 +485,19 @@ namespace SmartBot.Plugins.API
 			{
 				case Card.Cards.EX1_332://Silence
 					return true;
+
 				case Card.Cards.EX1_166://Keeper of the Grove
 					return true;
+
 				case Card.Cards.CS2_203://Ironbeak Owl
 					return true;
+
 				case Card.Cards.EX1_048://Spellbreaker
 					return true;
+
 				case Card.Cards.EX1_245://Earth Shock
 					return true;
+					
 				case Card.Cards.EX1_626://Mass Dispel
 					return true;
 
