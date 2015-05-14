@@ -43,6 +43,9 @@ namespace SmartBot.Plugins.API
 		//GlobalValueModifier
 		private int GlobalValueModifier = 0;
 
+		//Secret Modifier
+		private int SecretModifier = 0;
+
 		public override float GetBoardValue(Board board)
 		{
 			float value = 0;
@@ -91,6 +94,8 @@ namespace SmartBot.Plugins.API
 
 			value += board.FriendCardDraw * FriendCardDrawValue;
 			value -= board.EnemyCardDraw * EnemyCardDrawValue;
+
+			value += SecretModifier;
 
 			return value;
 		}
@@ -188,6 +193,9 @@ namespace SmartBot.Plugins.API
 				MinionCastGlobalCost += 15;
 				break;
 			}
+
+			if(BoardHelper.IsFirstMove(board))
+				OnFirstAction(board, minion, target, true, false, false);
 		}
 
 		public override void OnCastSpell(Board board, Card spell, Card target)
@@ -266,11 +274,14 @@ namespace SmartBot.Plugins.API
 				case Card.Cards.CS2_031://Ice Lance
 					SpellsCastGlobalCost += 20;
 				break;
-				
+
 				case Card.Cards.CS2_025://Arcane Explosion
 					SpellsCastGlobalCost += 10;
 				break;
 			}
+
+			if(BoardHelper.IsFirstMove(board))
+				OnFirstAction(board, spell, target, true, false, false);
 		}
 
 		public override void OnCastWeapon(Board board, Card weapon, Card target)
@@ -278,6 +289,9 @@ namespace SmartBot.Plugins.API
 			switch (weapon.Template.Id)
 			{
 			}
+
+			if(BoardHelper.IsFirstMove(board))
+				OnFirstAction(board, weapon, target, false, false, false);
 		}
 
 		public override void OnAttack(Board board, Card attacker, Card target)
@@ -297,6 +311,9 @@ namespace SmartBot.Plugins.API
 				if (target != null && target.CurrentAtk >= attacker.CurrentHealth && !attacker.IsDivineShield)
 					OnMinionDeath(board, attacker);
 			}
+
+			if(BoardHelper.IsFirstMove(board))
+				OnFirstAction(board, attacker, target, false, true, false);
 		}
 
 		public override void OnCastAbility(Board board, Card ability, Card target)
@@ -304,6 +321,9 @@ namespace SmartBot.Plugins.API
 			if(board.HeroEnemy.CurrentHealth <= 6 && target != null && target.Id == board.HeroEnemy.Id) HeroPowerGlobalCost -= 10;
 			if(board.TurnCount < 2) HeroPowerGlobalCost += 10;
 			HeroPowerGlobalCost += 2;
+
+			if(BoardHelper.IsFirstMove(board))
+				OnFirstAction(board, ability, target, false, false, true);
 		}
 
 		public override RemoteProfile DeepClone()
@@ -332,6 +352,8 @@ namespace SmartBot.Plugins.API
 
 			ret.GlobalValueModifier = GlobalValueModifier;
 
+			ret.SecretModifier = SecretModifier;
+
 			return ret;
 		}
 
@@ -339,6 +361,122 @@ namespace SmartBot.Plugins.API
 		{
 			switch (minion.Template.Id)
 			{
+			}
+		}
+
+		public void OnFirstAction(Board board, Card minion, Card target, bool castCard, bool attackCard, bool castAbility)
+		{
+			if (board.Hand.Any(x => x.Template.Id == Card.Cards.GVG_074))
+			{
+				if (minion.Template.Id == Card.Cards.GVG_074)
+					SecretModifier += 100;
+
+				return;
+			}
+			
+			Card.CClass enemyclass = board.EnemyClass;
+			bool lowestValueActor = false;
+
+			if (minion != null && board.GetWorstMinionCanAttack() != null && board.GetWorstMinionCanAttack().Id == minion.Id &&
+				castCard)
+			lowestValueActor = true;
+			else if (minion != null && board.GetWorstMinionFromHand() != null && board.GetWorstMinionFromHand().Id == minion.Id &&
+					 castCard)
+			lowestValueActor = true;
+
+			switch (enemyclass)
+			{
+				case Card.CClass.HUNTER:
+					if (castAbility && minion.Template.Id == Card.Cards.CS1h_001 &&
+						target.Type == Card.CType.MINION && target.IsFriend && target.CurrentHealth <= 2 && target.MaxHealth >= 3)
+				SecretModifier += 40;
+
+				if (castCard && minion.Template.Id == Card.Cards.FP1_007)
+					SecretModifier += 100;
+
+				if (castCard && minion.Template.Id == Card.Cards.EX1_093)
+				{
+					if ((board.GetLeftMinion(minion) != null && board.GetLeftMinion(minion).CurrentHealth == 2) &&
+							(board.GetRightMinion(minion) != null && board.GetRightMinion(minion).CurrentHealth == 2))
+					{
+						if (BoardHelper.Get2HpMinions(board) > 1)
+							SecretModifier += 100;
+					}
+					else if (board.GetLeftMinion(minion) != null && board.GetLeftMinion(minion).CurrentHealth == 2)
+					{
+						if (BoardHelper.Get2HpMinions(board) > 0)
+							SecretModifier += 50;
+					}
+					else if (board.GetRightMinion(minion) != null && board.GetRightMinion(minion).CurrentHealth == 2)
+					{
+						if (BoardHelper.Get2HpMinions(board) > 0)
+							SecretModifier += 50;
+					}
+				}
+
+				if (attackCard)
+				{
+					if (lowestValueActor && !board.TrapMgr.TriggeredHeroWithMinion)
+					{
+						if (BoardHelper.GetWeakMinions(board) > 1)
+						{
+							if (board.MinionEnemy.Count > 0)
+							{
+								if (target.Type == Card.CType.HERO)
+								{
+									if (board.MinionEnemy.Count == 0 || BoardHelper.GetCanAttackMinions(board) == 1)
+										SecretModifier += 10;
+									else
+										SecretModifier -= BoardHelper.GetWeakMinions(board)*3;
+								}
+
+								if (target.Type == Card.CType.MINION)
+									SecretModifier += 5;
+							}
+						}
+					}
+
+					if (!lowestValueActor && (!board.TrapMgr.TriggeredHeroWithMinion || !board.TrapMgr.TriggeredMinionWithMinion))
+						SecretModifier -= 3;
+				}
+				else
+					SecretModifier -= 10;
+				break;
+
+				case Card.CClass.MAGE:
+					if (!board.TrapMgr.TriggeredCastMinion && lowestValueActor
+						&& castCard)
+				{
+					SecretModifier += 50;
+				}
+
+				break;
+				case Card.CClass.PALADIN:
+					if (!board.TrapMgr.TriggeredHeroWithMinion && lowestValueActor
+						&& minion != null && castCard
+						&& target != null && target.Type == Card.CType.HERO
+						&& attackCard)
+				{
+					SecretModifier += 10;
+				}
+
+				break;
+			}
+
+			if(castCard)
+			{
+				board.TrapMgr.TriggeredCastMinion = true;
+			}
+			else if(castAbility)
+			{
+			}
+			else if(attackCard)
+			{
+				if (target!= null && target.Type == Card.CType.HERO)
+					board.TrapMgr.TriggeredHeroWithMinion = true;
+
+				if (target != null && target.Type == Card.CType.MINION)
+					board.TrapMgr.TriggeredMinionWithMinion = true;
 			}
 		}
 
@@ -368,13 +506,13 @@ namespace SmartBot.Plugins.API
 					return 6;
 
 				case Card.Cards.EX1_608://Sorcerer's Apprentice
-					return 5;
+					return 8;
 
 				case Card.Cards.NEW1_012://Mana Wyrm
 					return 5;
 
 				case Card.Cards.BRM_002://Flamewaker
-					return 7;
+					return 9;
 
 				case Card.Cards.EX1_595://Cult Master
 					return 2;
@@ -497,7 +635,7 @@ namespace SmartBot.Plugins.API
 
 				case Card.Cards.EX1_245://Earth Shock
 					return true;
-					
+
 				case Card.Cards.EX1_626://Mass Dispel
 					return true;
 
@@ -533,5 +671,49 @@ namespace SmartBot.Plugins.API
 
 			return false;
 		}
+
+		public static bool IsFirstMove(Board board)
+		{
+			return (board.SecretEnemy && board.ActionsStack.Count == 0);
+		}
+		
+		public static int Get2HpMinions(Board b)
+        {
+            int i = 0;
+
+            foreach (Card card in b.MinionFriend)
+            {
+                if (card.CurrentHealth == 2 && card.IsDivineShield == false)
+                    i++;
+            }
+
+            return i;
+        }
+
+        public static int GetWeakMinions(Board b)
+        {
+            int i = 0;
+
+            foreach (Card card in b.MinionFriend)
+            {
+                if (card.CurrentHealth <= 2 && card.IsDivineShield == false)
+                    i++;
+            }
+
+            return i;
+        }
+
+        public static int GetCanAttackMinions(Board b)
+        {
+            int i = 0;
+
+            foreach (Card card in b.MinionFriend)
+            {
+                if (card.CanAttack)
+                    i++;
+            }
+
+            return i;
+        }
 	}
 }
