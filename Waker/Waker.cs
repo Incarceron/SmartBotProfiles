@@ -373,31 +373,28 @@ namespace SmartBot.Plugins.API
 
 				return;
 			}
-			
+
 			Card.CClass enemyclass = board.EnemyClass;
 			bool lowestValueActor = false;
 
-			if (minion != null && board.GetWorstMinionCanAttack() != null && board.GetWorstMinionCanAttack().Id == minion.Id &&
-				castCard)
-			lowestValueActor = true;
-			else if (minion != null && board.GetWorstMinionFromHand() != null && board.GetWorstMinionFromHand().Id == minion.Id &&
-					 castCard)
-			lowestValueActor = true;
+			if (minion != null && board.GetWorstMinionCanAttack() != null && board.GetWorstMinionCanAttack().Id == minion.Id && castCard)
+				lowestValueActor = true;
+			else if (minion != null && board.GetWorstMinionFromHand() != null && board.GetWorstMinionFromHand().Id == minion.Id && castCard)
+				lowestValueActor = true;
 
 			switch (enemyclass)
 			{
 				case Card.CClass.HUNTER:
-					if (castAbility && minion.Template.Id == Card.Cards.CS1h_001 &&
-						target.Type == Card.CType.MINION && target.IsFriend && target.CurrentHealth <= 2 && target.MaxHealth >= 3)
-				SecretModifier += 40;
+
+				if (castAbility && minion.Template.Id == Card.Cards.CS1h_001 &&	target.Type == Card.CType.MINION && target.IsFriend && target.CurrentHealth <= 2 && target.MaxHealth >= 3)
+					SecretModifier += 40;
 
 				if (castCard && minion.Template.Id == Card.Cards.FP1_007)
 					SecretModifier += 100;
 
 				if (castCard && minion.Template.Id == Card.Cards.EX1_093)
 				{
-					if ((board.GetLeftMinion(minion) != null && board.GetLeftMinion(minion).CurrentHealth == 2) &&
-							(board.GetRightMinion(minion) != null && board.GetRightMinion(minion).CurrentHealth == 2))
+					if ((board.GetLeftMinion(minion) != null && board.GetLeftMinion(minion).CurrentHealth == 2) &&	(board.GetRightMinion(minion) != null && board.GetRightMinion(minion).CurrentHealth == 2))
 					{
 						if (BoardHelper.Get2HpMinions(board) > 1)
 							SecretModifier += 100;
@@ -418,21 +415,18 @@ namespace SmartBot.Plugins.API
 				{
 					if (lowestValueActor && !board.TrapMgr.TriggeredHeroWithMinion)
 					{
-						if (BoardHelper.GetWeakMinions(board) > 1)
+						if (BoardHelper.GetWeakMinions(board) > 1 && board.MinionEnemy.Count > 0)
 						{
-							if (board.MinionEnemy.Count > 0)
+							if (target.Type == Card.CType.HERO)
 							{
-								if (target.Type == Card.CType.HERO)
-								{
-									if (board.MinionEnemy.Count == 0 || BoardHelper.GetCanAttackMinions(board) == 1)
-										SecretModifier += 10;
-									else
-										SecretModifier -= BoardHelper.GetWeakMinions(board)*3;
-								}
-
-								if (target.Type == Card.CType.MINION)
-									SecretModifier += 5;
+								if (board.MinionEnemy.Count == 0 || BoardHelper.GetCanAttackMinions(board) == 1)
+									SecretModifier += 10;
+								else
+									SecretModifier -= BoardHelper.GetWeakMinions(board)*3;
 							}
+
+							if (target.Type == Card.CType.MINION)
+								SecretModifier += 5;
 						}
 					}
 
@@ -441,16 +435,17 @@ namespace SmartBot.Plugins.API
 				}
 				else
 					SecretModifier -= 10;
+
 				break;
 
 				case Card.CClass.MAGE:
-					if (!board.TrapMgr.TriggeredCastMinion && lowestValueActor
-						&& castCard)
+					if (!board.TrapMgr.TriggeredCastMinion && lowestValueActor 	&& castCard)
 				{
 					SecretModifier += 50;
 				}
 
 				break;
+
 				case Card.CClass.PALADIN:
 					if (!board.TrapMgr.TriggeredHeroWithMinion && lowestValueActor
 						&& minion != null && castCard
@@ -676,44 +671,44 @@ namespace SmartBot.Plugins.API
 		{
 			return (board.SecretEnemy && board.ActionsStack.Count == 0);
 		}
-		
+
 		public static int Get2HpMinions(Board b)
-        {
-            int i = 0;
+		{
+			int i = 0;
 
-            foreach (Card card in b.MinionFriend)
-            {
-                if (card.CurrentHealth == 2 && card.IsDivineShield == false)
-                    i++;
-            }
+			foreach (Card card in b.MinionFriend)
+			{
+				if (card.CurrentHealth == 2 && card.IsDivineShield == false)
+					i++;
+			}
 
-            return i;
-        }
+			return i;
+		}
 
-        public static int GetWeakMinions(Board b)
-        {
-            int i = 0;
+		public static int GetWeakMinions(Board b)
+		{
+			int i = 0;
 
-            foreach (Card card in b.MinionFriend)
-            {
-                if (card.CurrentHealth <= 2 && card.IsDivineShield == false)
-                    i++;
-            }
+			foreach (Card card in b.MinionFriend)
+			{
+				if (card.CurrentHealth <= 2 && card.IsDivineShield == false)
+					i++;
+			}
 
-            return i;
-        }
+			return i;
+		}
 
-        public static int GetCanAttackMinions(Board b)
-        {
-            int i = 0;
+		public static int GetCanAttackMinions(Board b)
+		{
+			int i = 0;
 
-            foreach (Card card in b.MinionFriend)
-            {
-                if (card.CanAttack)
-                    i++;
-            }
+			foreach (Card card in b.MinionFriend)
+			{
+				if (card.CanAttack)
+					i++;
+			}
 
-            return i;
-        }
+			return i;
+		}
 	}
 }
